@@ -1,0 +1,16 @@
+{
+  "name": "todo-mvc",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "pulp build --to index.js",
+    "watch": "pulp --watch build --to index.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
