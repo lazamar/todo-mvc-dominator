@@ -12,7 +12,7 @@ This clean division of concerns is a core part of Elm. You can read more about
 this in <http://guide.elm-lang.org/architecture/index.html>
 -}
 
-import Prelude 
+import Prelude hiding (div, id)
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Data.Tuple (Tuple(Tuple))
@@ -20,6 +20,8 @@ import Data.Monoid ((<>), mempty)
 import Data.List (List, (:))
 import Data.List as List
 import Data.String as String
+import Data.Foldable as Foldable
+import Data.Array as Array
 
 import Elm.Html
 import Elm.Html.Attributes 
@@ -27,8 +29,8 @@ import Elm.Html.Events
 import Elm.Html.Keyed as Keyed
 import Elm.Html.Lazy  (lazy, lazy2)
 import Elm.Cmd (Cmd)
-import Elm.Json.Decode as Json
-import Elm.Operators ((|>), (!))
+import Elm.Operators ((|>), (<|), (!))
+import Elm.Json as Json
 
 
 main :: Eff Effs Unit
@@ -209,140 +211,138 @@ update msg model =
 
 view :: Model -> Html Msg
 view model =
-	text "Testing"
---     div
---         [ class "todomvc-wrapper"
---         , style [ ( "visibility", "hidden" ) ]
---         ]
---         [ section
---             [ class "todoapp" ]
---             [ lazy viewInput model.field
---             , lazy2 viewEntries model.visibility model.entries
---             , lazy2 viewControls model.visibility model.entries
---             ]
---         , infoFooter
---         ]
+    div [ class_ "todomvc-wrapper"
+        , style [ ( "visibility" ! "hidden" ) ]
+        ]
+        [ section
+            [ class_ "todoapp" ]
+            [ lazy viewInput model.field
+            , lazy2 viewEntries model.visibility model.entries
+            -- , lazy2 viewControls model.visibility model.entries
+            ]
+        , infoFooter
+        ]
 
 
--- viewInput : String -> Html Msg
--- viewInput task =
---     header
---         [ class "header" ]
---         [ h1 [] [ text "todos" ]
---         , input
---             [ class "new-todo"
---             , placeholder "What needs to be done?"
---             , autofocus True
---             , value task
---             , name "newTodo"
---             , onInput UpdateField
---             , onEnter Add
---             ]
---             []
---         ]
+viewInput :: String -> Html Msg
+viewInput task =
+    header
+        [ class_ "header" ]
+        [ h1 [] [ text "todos" ]
+        , input
+            [ class_ "new-todo"
+            , placeholder "What needs to be done?"
+            , autofocus true
+            , value task
+            , name "newTodo"
+            , onInput UpdateField
+            , onEnter Add
+            ]
+            []
+        ]
 
 
--- onEnter : Msg -> Attribute Msg
--- onEnter msg =
---     let
---         isEnter code =
---             if code == 13 then
---                 Json.succeed msg
---             else
---                 Json.fail "not ENTER"
---     in
---         on "keydown" (Json.andThen isEnter keyCode)
-
-
-
--- -- VIEW ALL ENTRIES
-
-
--- viewEntries : String -> List Entry -> Html Msg
--- viewEntries visibility entries =
---     let
---         isVisible todo =
---             case visibility of
---                 "Completed" ->
---                     todo.completed
-
---                 "Active" ->
---                     not todo.completed
-
---                 _ ->
---                     True
-
---         allCompleted =
---             List.all .completed entries
-
---         cssVisibility =
---             if List.isEmpty entries then
---                 "hidden"
---             else
---                 "visible"
---     in
---         section
---             [ class "main"
---             , style [ ( "visibility", cssVisibility ) ]
---             ]
---             [ input
---                 [ class "toggle-all"
---                 , type_ "checkbox"
---                 , name "toggle"
---                 , checked allCompleted
---                 , onClick (CheckAll (not allCompleted))
---                 ]
---                 []
---             , label
---                 [ for "toggle-all" ]
---                 [ text "Mark all as complete" ]
---             , Keyed.ul [ class "todo-list" ] <|
---                 List.map viewKeyedEntry (List.filter isVisible entries)
---             ]
+onEnter :: Msg -> Attribute Msg
+onEnter msg =
+    let
+        isEnter code =
+            if code == 13 then
+                Json.succeed msg
+            else
+                Json.fail "not ENTER"
+    in
+        on "keydown" (\e -> keyCode e >>= isEnter)
 
 
 
--- -- VIEW INDIVIDUAL ENTRIES
+-- -- -- VIEW ALL ENTRIES
 
 
--- viewKeyedEntry : Entry -> ( String, Html Msg )
--- viewKeyedEntry todo =
---     ( toString todo.id, lazy viewEntry todo )
+viewEntries :: String -> List Entry -> Html Msg
+viewEntries visibility entries =
+    let
+        isVisible todo =
+            case visibility of
+                "Completed" ->
+                    todo.completed
+
+                "Active" ->
+                    not todo.completed
+
+                _ ->
+                    true
+
+        allCompleted =
+            Foldable.all (\v -> v.completed) entries
+
+        cssVisibility =
+            if List.null entries then
+                "hidden"
+            else
+                "visible"
+    in
+        section
+            [ class_ "main"
+            , style [ ( "visibility" ! cssVisibility ) ]
+            ]
+            [ input
+                [ class_ "toggle-all"
+                , type_ "checkbox"
+                , name "toggle"
+                , checked allCompleted
+                , onClick (CheckAll (not allCompleted))
+                ]
+                []
+            , label
+                [ for "toggle-all" ]
+                [ text "Mark all as complete" ]
+            , Keyed.ul [ class_ "todo-list" ] <|
+                Array.fromFoldable (map viewKeyedEntry (List.filter isVisible entries))
+            ]
 
 
--- viewEntry : Entry -> Html Msg
--- viewEntry todo =
---     li
---         [ classList [ ( "completed", todo.completed ), ( "editing", todo.editing ) ] ]
---         [ div
---             [ class "view" ]
---             [ input
---                 [ class "toggle"
---                 , type_ "checkbox"
---                 , checked todo.completed
---                 , onClick (Check todo.id (not todo.completed))
---                 ]
---                 []
---             , label
---                 [ onDoubleClick (EditingEntry todo.id True) ]
---                 [ text todo.description ]
---             , button
---                 [ class "destroy"
---                 , onClick (Delete todo.id)
---                 ]
---                 []
---             ]
---         , input
---             [ class "edit"
---             , value todo.description
---             , name "title"
---             , id ("todo-" ++ toString todo.id)
---             , onInput (UpdateEntry todo.id)
---             , onBlur (EditingEntry todo.id false)
---             , onEnter (EditingEntry todo.id false)
---             ]
---             []
---         ]
+
+-- VIEW INDIVIDUAL ENTRIES
+
+
+viewKeyedEntry :: Entry -> Tuple String (Html Msg) 
+viewKeyedEntry todo =
+    ( show todo.id ! lazy viewEntry todo )
+
+
+viewEntry :: Entry -> Html Msg
+viewEntry todo =
+    li
+        [ classList [ ( "completed" ! todo.completed ), ( "editing" ! todo.editing ) ] ]
+        [ div
+            [ class_ "view" ]
+            [ input
+                [ class_ "toggle"
+                , type_ "checkbox"
+                , checked todo.completed
+                , onClick (Check todo.id (not todo.completed))
+                ]
+                []
+            , label
+                [ onDoubleClick (EditingEntry todo.id true) ]
+                [ text todo.description ]
+            , button
+                [ class_ "destroy"
+                , onClick (Delete todo.id)
+                ]
+                []
+            ]
+        , input
+            [ class_ "edit"
+            , value todo.description
+            , name "title"
+            , id ("todo-" <> show todo.id)
+            , onInput (UpdateEntry todo.id)
+            , onBlur (EditingEntry todo.id false)
+            , onEnter (EditingEntry todo.id false)
+            ]
+            []
+        ]
 
 
 
@@ -379,7 +379,7 @@ view model =
 --     in
 --         span
 --             [ class "todo-count" ]
---             [ strong [] [ text (toString entriesLeft) ]
+--             [ strong [] [ text (show entriesLeft) ]
 --             , text (item_ ++ " left")
 --             ]
 
@@ -412,20 +412,20 @@ view model =
 --         , hidden (entriesCompleted == 0)
 --         , onClick DeleteComplete
 --         ]
---         [ text ("Clear completed (" ++ toString entriesCompleted ++ ")")
+--         [ text ("Clear completed (" ++ show entriesCompleted ++ ")")
 --         ]
 
 
--- infoFooter : Html msg
--- infoFooter =
---     footer [ class "info" ]
---         [ p [] [ text "Double-click to edit a todo" ]
---         , p []
---             [ text "Written by "
---             , a [ href "https://github.com/evancz" ] [ text "Evan Czaplicki" ]
---             ]
---         , p []
---             [ text "Part of "
---             , a [ href "http://todomvc.com" ] [ text "TodoMVC" ]
---             ]
---         ]
+infoFooter :: forall msg. Html msg
+infoFooter =
+    footer [ class_ "info" ]
+        [ p [] [ text "Double-click to edit a todo" ]
+        , p []
+            [ text "Written by "
+            , a [ href "https://github.com/evancz" ] [ text "Evan Czaplicki" ]
+            ]
+        , p []
+            [ text "Part of "
+            , a [ href "http://todomvc.com" ] [ text "TodoMVC" ]
+            ]
+        ]
