@@ -4637,7 +4637,7 @@ var PS = {};
           return new Data_Tuple.Tuple(v.value0, Data_Semigroup.append(Data_Semigroup.semigroupArray)(v.value1)([ Control_Monad_Eff_Class.liftEff(Control_Monad_Cont_Trans.monadEffContT(Control_Monad_Eff_Class.monadEffEff))($foreign.setStorage(v.value0)) ]));
       };
   };
-  var infoFooter = Elm_Html.footer([ Elm_Html_Attributes.class_("info") ])([ Elm_Html.p([  ])([ Elm_Html.text("Double-click to edit a todo") ]), Elm_Html.p([  ])([ Elm_Html.text("Written by "), Elm_Html.a([ Elm_Html_Attributes.href("https://github.com/evancz") ])([ Elm_Html.text("Evan Czaplicki") ]) ]), Elm_Html.p([  ])([ Elm_Html.text("Part of "), Elm_Html.a([ Elm_Html_Attributes.href("http://todomvc.com") ])([ Elm_Html.text("TodoMVC") ]) ]) ]);
+  var infoFooter = Elm_Html.footer([ Elm_Html_Attributes.class_("info") ])([ Elm_Html.p([  ])([ Elm_Html.text("Double-click to edit a todo") ]), Elm_Html.p([  ])([ Elm_Html.text("Code adapted by "), Elm_Html.a([ Elm_Html_Attributes.href("https://github.com/lazamar") ])([ Elm_Html.text("Marcelo Lazaroni") ]), Elm_Html.text(" showing Elm's virtual DOM in Purescript. ") ]), Elm_Html.p([  ])([ Elm_Html.text("Originally written by "), Elm_Html.a([ Elm_Html_Attributes.href("https://github.com/evancz") ])([ Elm_Html.text("Evan Czaplicki") ]) ]), Elm_Html.p([  ])([ Elm_Html.text("Part of "), Elm_Html.a([ Elm_Html_Attributes.href("http://todomvc.com") ])([ Elm_Html.text("TodoMVC") ]) ]) ]);
 
   // VIEW
   var view = function (model) {

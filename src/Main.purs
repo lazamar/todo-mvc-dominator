@@ -421,8 +421,13 @@ infoFooter =
     footer [ class_ "info" ]
         [ p [] [ text "Double-click to edit a todo" ]
         , p []
-            [ text "Written by "
-            , a [ href "https://github.com/evancz" ] [ text "Evan Czaplicki" ]
+            [ text "Code adapted by " 
+            , a [ href "https://github.com/lazamar" ] [ text "Marcelo Lazaroni" ] 
+            , text " showing Elm's virtual DOM in Purescript. " 
+            ]
+        , p []
+            [ text "Originally written by " 
+            , a [ href "https://github.com/evancz" ] [ text "Evan Czaplicki" ] 
             ]
         , p []
             [ text "Part of "
