@@ -1565,6 +1565,11 @@ var PS = {};
       };
       return false;
   };
+  var length = Data_Foldable.foldl(Data_List_Types.foldableList)(function (acc) {
+      return function (v) {
+          return acc + 1 | 0;
+      };
+  })(0);
   var fromFoldable = function (dictFoldable) {
       return Data_Foldable.foldr(dictFoldable)(Data_List_Types.Cons.create)(Data_List_Types.Nil.value);
   };
@@ -1603,6 +1608,7 @@ var PS = {};
   };
   exports["fromFoldable"] = fromFoldable;
   exports["null"] = $$null;
+  exports["length"] = length;
   exports["reverse"] = reverse;
   exports["filter"] = filter;
 })(PS["Data.List"] = PS["Data.List"] || {});
@@ -3960,6 +3966,9 @@ var PS = {};
   var node = Elm_Native_VirtualDom.node;
   var p = node("p");      
   var section = node("section");
+  var span = node("span");
+  var strong = node("strong");
+  var ul = node("ul");     
   var li = node("li");        
   var label = node("label");
   var input = node("input");
@@ -3975,7 +3984,10 @@ var PS = {};
   exports["h1"] = h1;
   exports["div"] = div;
   exports["p"] = p;
+  exports["span"] = span;
   exports["a"] = a;
+  exports["strong"] = strong;
+  exports["ul"] = ul;
   exports["li"] = li;
   exports["input"] = input;
   exports["button"] = button;
@@ -4044,6 +4056,9 @@ var PS = {};
   var checked = function (bool) {
       return boolProperty("checked")(bool);
   };
+  var hidden = function (bool) {
+      return boolProperty("hidden")(bool);
+  };
   var autofocus = function (bool) {
       return boolProperty("autofocus")(bool);
   };
@@ -4052,6 +4067,7 @@ var PS = {};
   exports["class_"] = class_;
   exports["classList"] = classList;
   exports["id"] = id;
+  exports["hidden"] = hidden;
   exports["type_"] = type_;
   exports["value"] = value;
   exports["checked"] = checked;
@@ -4154,6 +4170,7 @@ var PS = {};
   var Data_List = PS["Data.List"];
   var Data_List_Types = PS["Data.List.Types"];
   var Data_Monoid = PS["Data.Monoid"];
+  var Data_Ring = PS["Data.Ring"];
   var Data_Semigroup = PS["Data.Semigroup"];
   var Data_Semiring = PS["Data.Semiring"];
   var Data_Show = PS["Data.Show"];
@@ -4331,10 +4348,44 @@ var PS = {};
       };
       return ChangeVisibility;
   })();
+  var visibilitySwap = function (uri) {
+      return function (visibility) {
+          return function (actualVisibility) {
+              return Elm_Html.li([ Elm_Html_Events.onClick(new ChangeVisibility(visibility)) ])([ Elm_Html.a([ Elm_Html_Attributes.href(uri), Elm_Html_Attributes.classList([ new Data_Tuple.Tuple("selected", visibility === actualVisibility) ]) ])([ Elm_Html.text(visibility) ]) ]);
+          };
+      };
+  };
+  var viewControlsFilters = function (visibility) {
+      return Elm_Html.ul([ Elm_Html_Attributes.class_("filters") ])([ visibilitySwap("#/")("All")(visibility), Elm_Html.text(" "), visibilitySwap("#/active")("Active")(visibility), Elm_Html.text(" "), visibilitySwap("#/completed")("Completed")(visibility) ]);
+  };
+  var viewControlsCount = function (entriesLeft) {
+      var item_ = (function () {
+          var $14 = entriesLeft === 1;
+          if ($14) {
+              return " item";
+          };
+          return " items";
+      })();
+      return Elm_Html.span([ Elm_Html_Attributes.class_("todo-count") ])([ Elm_Html.strong([  ])([ Elm_Html.text(Data_Show.show(Data_Show.showInt)(entriesLeft)) ]), Elm_Html.text(item_ + " left") ]);
+  };
+  var viewControlsClear = function (entriesCompleted) {
+      return Elm_Html.button([ Elm_Html_Attributes.class_("clear-completed"), Elm_Html_Attributes.hidden(entriesCompleted === 0), Elm_Html_Events.onClick(DeleteComplete.value) ])([ Elm_Html.text("Clear completed (" + (Data_Show.show(Data_Show.showInt)(entriesCompleted) + ")")) ]);
+  };
+
+  // -- VIEW CONTROLS AND FOOTER
+  var viewControls = function (visibility) {
+      return function (entries) {
+          var entriesCompleted = Data_List.length(Data_List.filter(function (v) {
+              return v.completed;
+          })(entries));
+          var entriesLeft = Data_List.length(entries) - entriesCompleted | 0;
+          return Elm_Html.footer([ Elm_Html_Attributes.class_("footer"), Elm_Html_Attributes.hidden(Data_List["null"](entries)) ])([ Elm_Html_Lazy.lazy(viewControlsCount)(entriesLeft), Elm_Html_Lazy.lazy(viewControlsFilters)(visibility), Elm_Html_Lazy.lazy(viewControlsClear)(entriesCompleted) ]);
+      };
+  };
   var onEnter = function (msg) {
       var isEnter = function (code) {
-          var $14 = code === 13;
-          if ($14) {
+          var $15 = code === 13;
+          if ($15) {
               return Elm_Json.succeed(msg);
           };
           return Elm_Json.fail("not ENTER");
@@ -4365,8 +4416,8 @@ var PS = {};
               return true;
           };
           var cssVisibility = (function () {
-              var $16 = Data_List["null"](entries);
-              if ($16) {
+              var $17 = Data_List["null"](entries);
+              if ($17) {
                   return "hidden";
               };
               return "visible";
@@ -4399,177 +4450,177 @@ var PS = {};
           };
           if (msg instanceof Add) {
               return new Data_Tuple.Tuple((function () {
-                  var $19 = {};
-                  for (var $20 in model) {
-                      if ({}.hasOwnProperty.call(model, $20)) {
-                          $19[$20] = model[$20];
+                  var $20 = {};
+                  for (var $21 in model) {
+                      if ({}.hasOwnProperty.call(model, $21)) {
+                          $20[$21] = model[$21];
                       };
                   };
-                  $19.uid = model.uid + 1 | 0;
-                  $19.field = "";
-                  $19.entries = (function () {
-                      var $18 = Data_String["null"](model.field);
-                      if ($18) {
+                  $20.uid = model.uid + 1 | 0;
+                  $20.field = "";
+                  $20.entries = (function () {
+                      var $19 = Data_String["null"](model.field);
+                      if ($19) {
                           return model.entries;
                       };
                       return new Data_List_Types.Cons(newEntry(model.field)(model.uid), model.entries);
                   })();
-                  return $19;
+                  return $20;
               })(), [  ]);
           };
           if (msg instanceof UpdateField) {
               return new Data_Tuple.Tuple((function () {
-                  var $22 = {};
-                  for (var $23 in model) {
-                      if ({}.hasOwnProperty.call(model, $23)) {
-                          $22[$23] = model[$23];
+                  var $23 = {};
+                  for (var $24 in model) {
+                      if ({}.hasOwnProperty.call(model, $24)) {
+                          $23[$24] = model[$24];
                       };
                   };
-                  $22.field = msg.value0;
-                  return $22;
+                  $23.field = msg.value0;
+                  return $23;
               })(), [  ]);
           };
           if (msg instanceof EditingEntry) {
               var updateEntry = function (t) {
-                  var $26 = t.id === msg.value0;
-                  if ($26) {
-                      var $27 = {};
-                      for (var $28 in t) {
-                          if ({}.hasOwnProperty.call(t, $28)) {
-                              $27[$28] = t[$28];
+                  var $27 = t.id === msg.value0;
+                  if ($27) {
+                      var $28 = {};
+                      for (var $29 in t) {
+                          if ({}.hasOwnProperty.call(t, $29)) {
+                              $28[$29] = t[$29];
                           };
                       };
-                      $27.editing = msg.value1;
-                      return $27;
+                      $28.editing = msg.value1;
+                      return $28;
                   };
                   return t;
               };
               var focus = $foreign.focusElement("todo-" + Data_Show.show(Data_Show.showInt)(msg.value0));
               return new Data_Tuple.Tuple((function () {
-                  var $30 = {};
-                  for (var $31 in model) {
-                      if ({}.hasOwnProperty.call(model, $31)) {
-                          $30[$31] = model[$31];
+                  var $31 = {};
+                  for (var $32 in model) {
+                      if ({}.hasOwnProperty.call(model, $32)) {
+                          $31[$32] = model[$32];
                       };
                   };
-                  $30.entries = Data_Functor.map(Data_List_Types.functorList)(updateEntry)(model.entries);
-                  return $30;
+                  $31.entries = Data_Functor.map(Data_List_Types.functorList)(updateEntry)(model.entries);
+                  return $31;
               })(), [ Control_Monad_Eff_Class.liftEff(Control_Monad_Cont_Trans.monadEffContT(Control_Monad_Eff_Class.monadEffEff))(focus) ]);
           };
           if (msg instanceof UpdateEntry) {
               var updateEntry = function (t) {
-                  var $35 = t.id === msg.value0;
-                  if ($35) {
-                      var $36 = {};
-                      for (var $37 in t) {
-                          if ({}.hasOwnProperty.call(t, $37)) {
-                              $36[$37] = t[$37];
+                  var $36 = t.id === msg.value0;
+                  if ($36) {
+                      var $37 = {};
+                      for (var $38 in t) {
+                          if ({}.hasOwnProperty.call(t, $38)) {
+                              $37[$38] = t[$38];
                           };
                       };
-                      $36.description = msg.value1;
-                      return $36;
+                      $37.description = msg.value1;
+                      return $37;
                   };
                   return t;
               };
               return new Data_Tuple.Tuple((function () {
-                  var $39 = {};
-                  for (var $40 in model) {
-                      if ({}.hasOwnProperty.call(model, $40)) {
-                          $39[$40] = model[$40];
+                  var $40 = {};
+                  for (var $41 in model) {
+                      if ({}.hasOwnProperty.call(model, $41)) {
+                          $40[$41] = model[$41];
                       };
                   };
-                  $39.entries = Data_Functor.map(Data_List_Types.functorList)(updateEntry)(model.entries);
-                  return $39;
+                  $40.entries = Data_Functor.map(Data_List_Types.functorList)(updateEntry)(model.entries);
+                  return $40;
               })(), [  ]);
           };
           if (msg instanceof Delete) {
               return new Data_Tuple.Tuple((function () {
-                  var $44 = {};
-                  for (var $45 in model) {
-                      if ({}.hasOwnProperty.call(model, $45)) {
-                          $44[$45] = model[$45];
+                  var $45 = {};
+                  for (var $46 in model) {
+                      if ({}.hasOwnProperty.call(model, $46)) {
+                          $45[$46] = model[$46];
                       };
                   };
-                  $44.entries = Data_List.filter(function (t) {
+                  $45.entries = Data_List.filter(function (t) {
                       return t.id !== msg.value0;
                   })(model.entries);
-                  return $44;
+                  return $45;
               })(), [  ]);
           };
           if (msg instanceof DeleteComplete) {
               return new Data_Tuple.Tuple((function () {
-                  var $48 = {};
-                  for (var $49 in model) {
-                      if ({}.hasOwnProperty.call(model, $49)) {
-                          $48[$49] = model[$49];
+                  var $49 = {};
+                  for (var $50 in model) {
+                      if ({}.hasOwnProperty.call(model, $50)) {
+                          $49[$50] = model[$50];
                       };
                   };
-                  $48.entries = Data_List.filter(function ($74) {
+                  $49.entries = Data_List.filter(function ($75) {
                       return !(function (v1) {
                           return v1.completed;
-                      })($74);
+                      })($75);
                   })(model.entries);
-                  return $48;
+                  return $49;
               })(), [  ]);
           };
           if (msg instanceof Check) {
               var updateEntry = function (t) {
-                  var $51 = t.id === msg.value0;
-                  if ($51) {
-                      var $52 = {};
-                      for (var $53 in t) {
-                          if ({}.hasOwnProperty.call(t, $53)) {
-                              $52[$53] = t[$53];
+                  var $52 = t.id === msg.value0;
+                  if ($52) {
+                      var $53 = {};
+                      for (var $54 in t) {
+                          if ({}.hasOwnProperty.call(t, $54)) {
+                              $53[$54] = t[$54];
                           };
                       };
-                      $52.completed = msg.value1;
-                      return $52;
+                      $53.completed = msg.value1;
+                      return $53;
                   };
                   return t;
               };
               return new Data_Tuple.Tuple((function () {
-                  var $55 = {};
-                  for (var $56 in model) {
-                      if ({}.hasOwnProperty.call(model, $56)) {
-                          $55[$56] = model[$56];
+                  var $56 = {};
+                  for (var $57 in model) {
+                      if ({}.hasOwnProperty.call(model, $57)) {
+                          $56[$57] = model[$57];
                       };
                   };
-                  $55.entries = Data_Functor.map(Data_List_Types.functorList)(updateEntry)(model.entries);
-                  return $55;
+                  $56.entries = Data_Functor.map(Data_List_Types.functorList)(updateEntry)(model.entries);
+                  return $56;
               })(), [  ]);
           };
           if (msg instanceof CheckAll) {
               var updateEntry = function (t) {
-                  var $60 = {};
-                  for (var $61 in t) {
-                      if ({}.hasOwnProperty.call(t, $61)) {
-                          $60[$61] = t[$61];
+                  var $61 = {};
+                  for (var $62 in t) {
+                      if ({}.hasOwnProperty.call(t, $62)) {
+                          $61[$62] = t[$62];
                       };
                   };
-                  $60.completed = msg.value0;
-                  return $60;
+                  $61.completed = msg.value0;
+                  return $61;
               };
               return new Data_Tuple.Tuple((function () {
-                  var $63 = {};
-                  for (var $64 in model) {
-                      if ({}.hasOwnProperty.call(model, $64)) {
-                          $63[$64] = model[$64];
+                  var $64 = {};
+                  for (var $65 in model) {
+                      if ({}.hasOwnProperty.call(model, $65)) {
+                          $64[$65] = model[$65];
                       };
                   };
-                  $63.entries = Data_Functor.map(Data_List_Types.functorList)(updateEntry)(model.entries);
-                  return $63;
+                  $64.entries = Data_Functor.map(Data_List_Types.functorList)(updateEntry)(model.entries);
+                  return $64;
               })(), [  ]);
           };
           if (msg instanceof ChangeVisibility) {
               return new Data_Tuple.Tuple((function () {
-                  var $67 = {};
-                  for (var $68 in model) {
-                      if ({}.hasOwnProperty.call(model, $68)) {
-                          $67[$68] = model[$68];
+                  var $68 = {};
+                  for (var $69 in model) {
+                      if ({}.hasOwnProperty.call(model, $69)) {
+                          $68[$69] = model[$69];
                       };
                   };
-                  $67.visibility = msg.value0;
-                  return $67;
+                  $68.visibility = msg.value0;
+                  return $68;
               })(), [  ]);
           };
           throw new Error("Failed pattern match at Main line 134, column 5 - line 207, column 51: " + [ msg.constructor.name ]);
@@ -4586,69 +4637,11 @@ var PS = {};
           return new Data_Tuple.Tuple(v.value0, Data_Semigroup.append(Data_Semigroup.semigroupArray)(v.value1)([ Control_Monad_Eff_Class.liftEff(Control_Monad_Cont_Trans.monadEffContT(Control_Monad_Eff_Class.monadEffEff))($foreign.setStorage(v.value0)) ]));
       };
   };
-
-  // -- VIEW CONTROLS AND FOOTER
-  // viewControls : String -> List Entry -> Html Msg
-  // viewControls visibility entries =
-  //     let
-  //         entriesCompleted =
-  //             List.length (List.filter .completed entries)
-  //         entriesLeft =
-  //             List.length entries - entriesCompleted
-  //     in
-  //         footer
-  //             [ class "footer"
-  //             , hidden (List.isEmpty entries)
-  //             ]
-  //             [ lazy viewControlsCount entriesLeft
-  //             , lazy viewControlsFilters visibility
-  //             , lazy viewControlsClear entriesCompleted
-  //             ]
-  // viewControlsCount : Int -> Html Msg
-  // viewControlsCount entriesLeft =
-  //     let
-  //         item_ =
-  //             if entriesLeft == 1 then
-  //                 " item"
-  //             else
-  //                 " items"
-  //     in
-  //         span
-  //             [ class "todo-count" ]
-  //             [ strong [] [ text (show entriesLeft) ]
-  //             , text (item_ ++ " left")
-  //             ]
-  // viewControlsFilters : String -> Html Msg
-  // viewControlsFilters visibility =
-  //     ul
-  //         [ class "filters" ]
-  //         [ visibilitySwap "#/" "All" visibility
-  //         , text " "
-  //         , visibilitySwap "#/active" "Active" visibility
-  //         , text " "
-  //         , visibilitySwap "#/completed" "Completed" visibility
-  //         ]
-  // visibilitySwap : String -> String -> String -> Html Msg
-  // visibilitySwap uri visibility actualVisibility =
-  //     li
-  //         [ onClick (ChangeVisibility visibility) ]
-  //         [ a [ href uri, classList [ ( "selected", visibility == actualVisibility ) ] ]
-  //             [ text visibility ]
-  //         ]
-  // viewControlsClear : Int -> Html Msg
-  // viewControlsClear entriesCompleted =
-  //     button
-  //         [ class "clear-completed"
-  //         , hidden (entriesCompleted == 0)
-  //         , onClick DeleteComplete
-  //         ]
-  //         [ text ("Clear completed (" ++ show entriesCompleted ++ ")")
-  //         ]
   var infoFooter = Elm_Html.footer([ Elm_Html_Attributes.class_("info") ])([ Elm_Html.p([  ])([ Elm_Html.text("Double-click to edit a todo") ]), Elm_Html.p([  ])([ Elm_Html.text("Written by "), Elm_Html.a([ Elm_Html_Attributes.href("https://github.com/evancz") ])([ Elm_Html.text("Evan Czaplicki") ]) ]), Elm_Html.p([  ])([ Elm_Html.text("Part of "), Elm_Html.a([ Elm_Html_Attributes.href("http://todomvc.com") ])([ Elm_Html.text("TodoMVC") ]) ]) ]);
 
   // VIEW
   var view = function (model) {
-      return Elm_Html.div([ Elm_Html_Attributes.class_("todomvc-wrapper"), Elm_Html_Attributes.style([ new Data_Tuple.Tuple("visibility", "hidden") ]) ])([ Elm_Html.section([ Elm_Html_Attributes.class_("todoapp") ])([ Elm_Html_Lazy.lazy(viewInput)(model.field), Elm_Html_Lazy.lazy2(viewEntries)(model.visibility)(model.entries) ]), infoFooter ]);
+      return Elm_Html.div([ Elm_Html_Attributes.class_("todomvc-wrapper"), Elm_Html_Attributes.style([ new Data_Tuple.Tuple("visibility", "hidden") ]) ])([ Elm_Html.section([ Elm_Html_Attributes.class_("todoapp") ])([ Elm_Html_Lazy.lazy(viewInput)(model.field), Elm_Html_Lazy.lazy2(viewEntries)(model.visibility)(model.entries), Elm_Html_Lazy.lazy2(viewControls)(model.visibility)(model.entries) ]), infoFooter ]);
   };
   var emptyModel = {
       entries: Data_Monoid.mempty(Data_List_Types.monoidList),
@@ -4684,6 +4677,11 @@ var PS = {};
   exports["viewEntries"] = viewEntries;
   exports["viewKeyedEntry"] = viewKeyedEntry;
   exports["viewEntry"] = viewEntry;
+  exports["viewControls"] = viewControls;
+  exports["viewControlsCount"] = viewControlsCount;
+  exports["viewControlsFilters"] = viewControlsFilters;
+  exports["visibilitySwap"] = visibilitySwap;
+  exports["viewControlsClear"] = viewControlsClear;
   exports["infoFooter"] = infoFooter;
   exports["setStorage"] = $foreign.setStorage;
   exports["focusElement"] = $foreign.focusElement;

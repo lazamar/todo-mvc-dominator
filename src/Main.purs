@@ -218,7 +218,7 @@ view model =
             [ class_ "todoapp" ]
             [ lazy viewInput model.field
             , lazy2 viewEntries model.visibility model.entries
-            -- , lazy2 viewControls model.visibility model.entries
+            , lazy2 viewControls model.visibility model.entries
             ]
         , infoFooter
         ]
@@ -349,71 +349,71 @@ viewEntry todo =
 -- -- VIEW CONTROLS AND FOOTER
 
 
--- viewControls : String -> List Entry -> Html Msg
--- viewControls visibility entries =
---     let
---         entriesCompleted =
---             List.length (List.filter .completed entries)
+viewControls :: String -> List Entry -> Html Msg
+viewControls visibility entries =
+    let
+        entriesCompleted =
+            List.length (List.filter (\v -> v.completed) entries)
 
---         entriesLeft =
---             List.length entries - entriesCompleted
---     in
---         footer
---             [ class "footer"
---             , hidden (List.isEmpty entries)
---             ]
---             [ lazy viewControlsCount entriesLeft
---             , lazy viewControlsFilters visibility
---             , lazy viewControlsClear entriesCompleted
---             ]
-
-
--- viewControlsCount : Int -> Html Msg
--- viewControlsCount entriesLeft =
---     let
---         item_ =
---             if entriesLeft == 1 then
---                 " item"
---             else
---                 " items"
---     in
---         span
---             [ class "todo-count" ]
---             [ strong [] [ text (show entriesLeft) ]
---             , text (item_ ++ " left")
---             ]
+        entriesLeft =
+            List.length entries - entriesCompleted
+    in
+        footer
+            [ class_ "footer"
+            , hidden (List.null entries)
+            ]
+            [ lazy viewControlsCount entriesLeft
+            , lazy viewControlsFilters visibility
+            , lazy viewControlsClear entriesCompleted
+            ]
 
 
--- viewControlsFilters : String -> Html Msg
--- viewControlsFilters visibility =
---     ul
---         [ class "filters" ]
---         [ visibilitySwap "#/" "All" visibility
---         , text " "
---         , visibilitySwap "#/active" "Active" visibility
---         , text " "
---         , visibilitySwap "#/completed" "Completed" visibility
---         ]
+viewControlsCount :: Int -> Html Msg
+viewControlsCount entriesLeft =
+    let
+        item_ =
+            if entriesLeft == 1 then
+                " item"
+            else
+                " items"
+    in
+        span
+            [ class_ "todo-count" ]
+            [ strong [] [ text (show entriesLeft) ]
+            , text (item_ <> " left")
+            ]
 
 
--- visibilitySwap : String -> String -> String -> Html Msg
--- visibilitySwap uri visibility actualVisibility =
---     li
---         [ onClick (ChangeVisibility visibility) ]
---         [ a [ href uri, classList [ ( "selected", visibility == actualVisibility ) ] ]
---             [ text visibility ]
---         ]
+viewControlsFilters :: String -> Html Msg
+viewControlsFilters visibility =
+    ul
+        [ class_ "filters" ]
+        [ visibilitySwap "#/" "All" visibility
+        , text " "
+        , visibilitySwap "#/active" "Active" visibility
+        , text " "
+        , visibilitySwap "#/completed" "Completed" visibility
+        ]
 
 
--- viewControlsClear : Int -> Html Msg
--- viewControlsClear entriesCompleted =
---     button
---         [ class "clear-completed"
---         , hidden (entriesCompleted == 0)
---         , onClick DeleteComplete
---         ]
---         [ text ("Clear completed (" ++ show entriesCompleted ++ ")")
---         ]
+visibilitySwap :: String -> String -> String -> Html Msg
+visibilitySwap uri visibility actualVisibility =
+    li
+        [ onClick (ChangeVisibility visibility) ]
+        [ a [ href uri, classList [ ( "selected" ! visibility == actualVisibility ) ] ]
+            [ text visibility ]
+        ]
+
+
+viewControlsClear :: Int -> Html Msg
+viewControlsClear entriesCompleted =
+    button
+        [ class_ "clear-completed"
+        , hidden (entriesCompleted == 0)
+        , onClick DeleteComplete
+        ]
+        [ text ("Clear completed (" <> show entriesCompleted <> ")")
+        ]
 
 
 infoFooter :: forall msg. Html msg
