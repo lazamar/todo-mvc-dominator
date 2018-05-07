@@ -1,6 +1,6 @@
-module Main where
+module Todo where
 
-{-| TodoMVC implemented in Elm, using plain HTML and CSS for rendering.
+{-| TodoMVC implemented in Dominator, using plain HTML and CSS for rendering.
 
 This application is broken up into three key parts:
 
@@ -8,7 +8,7 @@ This application is broken up into three key parts:
   2. Update - a way to step the application state forward
   3. View   - a way to visualize our application state with HTML
 
-This clean division of concerns is a core part of Elm. You can read more about
+This clean division of concerns is a core part of Dominator. You can read more about
 this in <http://guide.elm-lang.org/architecture/index.html>
 -}
 
@@ -17,24 +17,25 @@ import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Data.Tuple (Tuple(Tuple))
 import Data.Monoid ((<>), mempty)
+import Data.Maybe (Maybe(Just, Nothing))
 import Data.List (List, (:))
 import Data.List as List
 import Data.String as String
 import Data.Foldable as Foldable
 import Data.Array as Array
 
-import Elm.Html
-import Elm.Html.Attributes 
-import Elm.Html.Events 
-import Elm.Html.Keyed as Keyed
-import Elm.Html.Lazy  (lazy, lazy2)
-import Elm.Cmd (Cmd)
-import Elm.Operators ((|>), (<|), (!))
-import Elm.Json as Json
+import Dominator.Html
+import Dominator.Html.Attributes 
+import Dominator.Html.Events 
+import Dominator.Html.Keyed as Keyed
+import Dominator.Html.Lazy  (lazy, lazy2)
+import Dominator.Cmd (Cmds)
+import Dominator.Operators ((|>), (<|), (!))
+import Dominator.Decode (Decoder, succeed, fail)
 
 
-main :: Eff Effs Unit
-main = program
+embed :: HtmlElement -> Eff Effs Unit
+embed el = program (Just el)
 	{ init : init 
 	, update : updateWithStorage
 	, view : view
@@ -51,7 +52,7 @@ type Effs = (dom :: DOM, localStorage :: LocalStorage)
 {-| We want to `setStorage` on every update. This function adds the setStorage
 command for every step of the update function.
 -}
-updateWithStorage :: Msg -> Model -> Tuple Model (Array (Cmd Effs Msg))
+updateWithStorage :: Msg -> Model -> Tuple Model (Cmds Effs Msg)
 updateWithStorage msg model =
     let
         Tuple newModel cmds  =
@@ -101,7 +102,7 @@ newEntry desc id =
     }
 
 
-init :: Tuple Model (Array (Cmd Effs Msg))
+init :: Tuple Model (Cmds Effs Msg)
 init =
     emptyModel ! []
 
@@ -129,7 +130,7 @@ data Msg
 
 
 -- How we update our Model on a given Msg?
-update :: Msg -> Model -> Tuple Model (Array (Cmd Effs Msg))
+update :: Msg -> Model -> Tuple Model (Cmds Effs Msg)
 update msg model = 
     case msg of
         NoOp ->
@@ -247,11 +248,11 @@ onEnter msg =
     let
         isEnter code =
             if code == 13 then
-                Json.succeed msg
+                succeed msg
             else
-                Json.fail "not ENTER"
+                fail "not ENTER"
     in
-        on "keydown" (\e -> keyCode e >>= isEnter)
+        on "keydown" $ \v -> keyCode v >>= isEnter
 
 
 
@@ -423,7 +424,7 @@ infoFooter =
         , p []
             [ text "Code adapted by " 
             , a [ href "https://github.com/lazamar" ] [ text "Marcelo Lazaroni" ] 
-            , text " showing Elm's virtual DOM in Purescript. " 
+            , text " showing Dominator's virtual DOM in Purescript. " 
             ]
         , p []
             [ text "Originally written by " 

@@ -8,8 +8,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "pulp build --to index.js",
-    "watch": "pulp --watch build --to index.js"
+    "build": "pulp build -m Todo src/Todo.purs --skip-entry-point --to index.js",
+    "watch": "pulp --watch build -m Todo --skip-entry-point --to index.js"
   },
   "author": "",
   "license": "ISC"
