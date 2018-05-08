@@ -21,7 +21,7 @@ module Todo where
 
 import Prelude hiding (div,id)
 
-import Dominator.Html (Attribute, DOM, Html, HtmlElement, a, button, div, footer, h1, header, input, label, li, p, program, section, span, strong, text, ul)
+import Dominator.Html (Attribute, DOM, Html, HtmlRef, ProgramContainer(EmbedWithin), a, button, div, footer, h1, header, input, label, li, p, program, section, span, strong, text, ul)
 import Dominator.Html.Attributes (autofocus, checked, classList, class_, for, hidden, href, id, name, placeholder, style, type_, value)
 import Dominator.Html.Events (keyCode, on, onBlur, onClick, onDoubleClick, onInput)
 
@@ -50,15 +50,14 @@ import Dominator.Operators ((|>), (!))
     defining this `embed` function which can be called form our page's JS and
     will kickstart our application.
 
-    It will accept a reference to an HTML element and a string.
-    The app will be created inside the HTML element. If you passed `Nothing` 
+    The app will be created inside the received HTML element. If you passed `FullScreen` 
     as the first argument to `program` the app would use the document's `body`.
 
     We will use the string to help creating our initial model.
 
 |-}
-embed :: HtmlElement -> String -> Eff Effs Unit
-embed el flags = program (Just el)
+embed :: HtmlRef -> String -> Eff Effs Unit
+embed el flags = program (EmbedWithin el)
     { init : init (decodeFlags flags)
     , update : updateWithStorage
     , view : view
