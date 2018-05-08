@@ -75,13 +75,14 @@ updateWithStorage msg model =
 
 
 -- The full application state of our todo app.
-type Model =
+newtype Model = Model
     { entries :: List Entry
     , field :: String
     , uid :: Int
     , visibility :: String
     }
 
+derive instance genericModel :: Generic Model
 
 newtype Entry = Entry
     { description :: String
@@ -93,7 +94,7 @@ newtype Entry = Entry
 derive instance genericEntry :: Generic Entry
 
 emptyModel :: Model
-emptyModel =
+emptyModel = Model
     { entries : mempty
     , visibility : "All"
     , field : ""
@@ -154,13 +155,13 @@ data Msg
 
 -- How we update our Model on a given Msg?
 update :: Msg -> Model -> Tuple Model (Cmds Effs Msg)
-update msg model = 
+update msg (Model model) = 
     case msg of
         NoOp ->
-            model ! []
+            Model model ! []
 
         Add ->
-            model
+            Model model
                 { uid = model.uid + 1
                 , field = ""
                 , entries =
@@ -173,7 +174,7 @@ update msg model =
                 ! []
 
         UpdateField str ->
-            model { field = str } ! []
+            Model model { field = str } ! []
 
         EditingEntry id isEditing ->
             let
@@ -186,7 +187,7 @@ update msg model =
                 focus =
                     focusElement ("todo-" <> show id)
             in
-                model { entries = map updateEntry model.entries }
+                Model model { entries = map updateEntry model.entries }
                     ! [ liftEff focus ]
 
         UpdateEntry id task ->
@@ -197,38 +198,38 @@ update msg model =
                     else
                         t
             in
-                model { entries = map updateEntry model.entries }
+                Model model { entries = map updateEntry model.entries }
                     ! []
 
         Delete id ->
-            model { entries = List.filter (\t -> entryId t /= id) model.entries }
+            Model model { entries = List.filter (\t -> entryId t /= id) model.entries }
                 ! []
 
         DeleteComplete ->
-            model { entries = List.filter (not <<< isCompleted) model.entries }
+            Model model { entries = List.filter (not <<< isCompleted) model.entries }
                 ! []
 
-        Check id isCompleted ->
+        Check id completed ->
             let
                 updateEntry (Entry t) = Entry $
                     if t.id == id then
-                        t { completed = isCompleted }
+                        t { completed = completed }
                     else
                         t
             in
-                model { entries = map updateEntry model.entries }
+                Model model { entries = map updateEntry model.entries }
                     ! []
 
-        CheckAll isCompleted ->
+        CheckAll completed ->
             let
                 updateEntry (Entry t) =
-                    Entry $ t { completed = isCompleted }
+                    Entry $ t { completed = completed }
             in
-                model { entries = map updateEntry model.entries }
+                Model model { entries = map updateEntry model.entries }
                     ! []
 
         ChangeVisibility visibility ->
-            model { visibility = visibility } ! []
+            Model model { visibility = visibility } ! []
 
 -- VIEW
 
@@ -239,7 +240,7 @@ entryId :: Entry -> Int
 entryId (Entry todo) = todo.id
 
 view :: Model -> Html Msg
-view model =
+view ( Model model ) =
     div [ class_ "todomvc-wrapper"
         , style [ ( "visibility" ! "hidden" ) ]
         ]
