@@ -12,45 +12,45 @@ This clean division of concerns is a core part of Dominator. You can read more a
 this in <http://guide.elm-lang.org/architecture/index.html>
 -}
 
-import Prelude hiding (div,id)
-
 import Dominator.Html
 import Dominator.Html.Attributes
 import Dominator.Html.Events
+import Prelude hiding (div,id)
+
+import Control.Monad.Eff (Eff, kind Effect)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Except (runExcept)
+
+import Data.List (List)
+import Data.Array ((:), filter, length, null)
+import Data.Either (Either(Left, Right))
+import Data.Foldable (for_)
+import Data.Foldable as Foldable
+import Data.Foreign (Foreign, toForeign)
+import Data.Foreign.Class (class Encode, class Decode)
+import Data.Foreign.Generic (defaultOptions, genericDecode, genericEncode)
+import Data.Generic.Rep (class Generic)
+import Data.Maybe (Maybe(Just, Nothing))
+import Data.Monoid ((<>), mempty)
+import Data.String as String
+import Data.Tuple (Tuple(Tuple))
+
 import Dominator.Cmd (Cmds)
 import Dominator.Decode (Decoder, succeed, fail)
 import Dominator.Html.Keyed as Keyed
 import Dominator.Html.Lazy (lazy, lazy2)
 import Dominator.Operators ((|>), (<|), (!))
 
-import Control.Monad.Eff (Eff, kind Effect)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Except (runExcept)
-import Data.Array as Array
-import Data.Array.ST (unsafeFreeze)
-import Data.Either (Either(Left, Right))
-import Data.Foldable as Foldable
-import Data.Foreign (Foreign, readNullOrUndefined, unsafeFromForeign)
-import Data.List (List, (:))
-import Data.List as List
-import Data.Maybe (Maybe(Just, Nothing))
-import Data.Monoid ((<>), mempty)
-import Data.String as String
-import Data.Tuple (Tuple(Tuple))
-import Data.Generic (class Generic)
-import Data.Foreign.Class (class Encode, class Decode, encode, decode)
-import Data.Foreign.Generic (defaultOptions, genericDecodeJSON, genericEncodeJSON)
-
 embed :: HtmlElement -> Foreign -> Eff Effs Unit
 embed el flags = program (Just el)
-    { init : init (parseFlags flags)
+    { init : init (decodeModel flags)
     , update : updateWithStorage
     , view : view
     }
 
 foreign import data LocalStorage :: Effect
 
-foreign import setStorage :: forall msg a. Model -> Eff (localStorage :: LocalStorage | a) msg
+foreign import setStorage :: forall msg a. Foreign -> Eff (localStorage :: LocalStorage | a) msg
 
 foreign import focusElement :: forall msg a. String -> Eff (dom :: DOM | a) msg
 
@@ -66,7 +66,7 @@ updateWithStorage msg model =
             update msg model
     in
         newModel
-        ! cmds <> [ liftEff $ setStorage newModel ]
+        ! cmds <> [ liftEff $ setStorage (encodeModel newModel) ]
         
 
 
@@ -76,13 +76,13 @@ updateWithStorage msg model =
 
 -- The full application state of our todo app.
 newtype Model = Model
-    { entries :: List Entry
+    { entries :: Array Entry
     , field :: String
     , uid :: Int
     , visibility :: String
     }
 
-derive instance genericModel :: Generic Model
+derive instance genericModel :: Generic Model _
 
 newtype Entry = Entry
     { description :: String
@@ -91,8 +91,15 @@ newtype Entry = Entry
     , id :: Int
     }
 
-derive instance genericEntry :: Generic Entry
+derive instance genericEntry :: Generic Entry _
 
+instance encodeEntry :: Encode Entry where
+    encode = genericEncode opts
+
+instance decodeEntry :: Decode Entry where
+    decode = genericDecode opts
+
+    
 emptyModel :: Model
 emptyModel = Model
     { entries : mempty
@@ -111,16 +118,20 @@ newEntry desc id = Entry
     }
 
 
-parseFlags :: Foreign -> Maybe Model 
-parseFlags v =
+opts = defaultOptions { unwrapSingleConstructors = true }
+
+encodeModel :: Model -> Foreign
+encodeModel model = genericEncode opts model
+
+decodeModel :: Foreign -> Maybe Model 
+decodeModel v = 
     let
         parsed = v
-            |> readNullOrUndefined
-            |> map (map unsafeFromForeign)
+            |> genericDecode opts
             |> runExcept
     in
         case parsed of
-            Right m -> m
+            Right m -> Just m
             Left _ -> Nothing
 
 
@@ -202,11 +213,11 @@ update msg (Model model) =
                     ! []
 
         Delete id ->
-            Model model { entries = List.filter (\t -> entryId t /= id) model.entries }
+            Model model { entries = filter (\t -> entryId t /= id) model.entries }
                 ! []
 
         DeleteComplete ->
-            Model model { entries = List.filter (not <<< isCompleted) model.entries }
+            Model model { entries = filter (not <<< isCompleted) model.entries }
                 ! []
 
         Check id completed ->
@@ -287,7 +298,7 @@ onEnter msg =
 
 -- -- -- VIEW ALL ENTRIES
 
-viewEntries :: String -> List Entry -> Html Msg
+viewEntries :: String -> Array Entry -> Html Msg
 viewEntries visibility entries =
     let
         isVisible (Entry todo) =
@@ -305,7 +316,7 @@ viewEntries visibility entries =
             Foldable.all isCompleted entries
 
         cssVisibility =
-            if List.null entries then
+            if null entries then
                 "hidden"
             else
                 "visible"
@@ -325,8 +336,9 @@ viewEntries visibility entries =
             , label
                 [ for "toggle-all" ]
                 [ text "Mark all as complete" ]
-            , Keyed.ul [ class_ "todo-list" ] <|
-                Array.fromFoldable (map viewKeyedEntry (List.filter isVisible entries))
+            , Keyed.ul 
+                [ class_ "todo-list" ] 
+                (map viewKeyedEntry $ filter isVisible entries)
             ]
 
 
@@ -378,18 +390,18 @@ viewEntry (Entry todo) =
 -- -- VIEW CONTROLS AND FOOTER
 
 
-viewControls :: String -> List Entry -> Html Msg
+viewControls :: String -> Array Entry -> Html Msg
 viewControls visibility entries =
     let
         entriesCompleted =
-            List.length (List.filter isCompleted entries)
+            length (filter isCompleted entries)
 
         entriesLeft =
-            List.length entries - entriesCompleted
+            length entries - entriesCompleted
     in
         footer
             [ class_ "footer"
-            , hidden (List.null entries)
+            , hidden (null entries)
             ]
             [ lazy viewControlsCount entriesLeft
             , lazy viewControlsFilters visibility

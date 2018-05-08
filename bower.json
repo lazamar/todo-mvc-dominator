@@ -11,7 +11,8 @@
     "purescript-console": "^3.0.0",
     "purescript-dominator": "https://github.com/lazamar/purescript-dominator.git",
     "purescript-foreign-generic": "^6.0.0",
-    "purescript-generics": "^4.0.0"
+    "purescript-generics": "^4.0.0",
+    "purescript-generics-rep": "^5.4.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^3.0.0"
