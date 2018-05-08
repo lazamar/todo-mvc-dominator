@@ -12,34 +12,41 @@ This clean division of concerns is a core part of Dominator. You can read more a
 this in <http://guide.elm-lang.org/architecture/index.html>
 -}
 
-import Prelude hiding (div, id)
-import Control.Monad.Eff (Eff, kind Effect)
-import Control.Monad.Eff.Class (liftEff)
-import Data.Tuple (Tuple(Tuple))
-import Data.Monoid ((<>), mempty)
-import Data.Maybe (Maybe(Just, Nothing))
-import Data.List (List, (:))
-import Data.List as List
-import Data.String as String
-import Data.Foldable as Foldable
-import Data.Array as Array
+import Prelude hiding (div,id)
 
 import Dominator.Html
-import Dominator.Html.Attributes 
-import Dominator.Html.Events 
-import Dominator.Html.Keyed as Keyed
-import Dominator.Html.Lazy  (lazy, lazy2)
+import Dominator.Html.Attributes
+import Dominator.Html.Events
 import Dominator.Cmd (Cmds)
-import Dominator.Operators ((|>), (<|), (!))
 import Dominator.Decode (Decoder, succeed, fail)
+import Dominator.Html.Keyed as Keyed
+import Dominator.Html.Lazy (lazy, lazy2)
+import Dominator.Operators ((|>), (<|), (!))
 
+import Control.Monad.Eff (Eff, kind Effect)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Except (runExcept)
+import Data.Array as Array
+import Data.Array.ST (unsafeFreeze)
+import Data.Either (Either(Left, Right))
+import Data.Foldable as Foldable
+import Data.Foreign (Foreign, readNullOrUndefined, unsafeFromForeign)
+import Data.List (List, (:))
+import Data.List as List
+import Data.Maybe (Maybe(Just, Nothing))
+import Data.Monoid ((<>), mempty)
+import Data.String as String
+import Data.Tuple (Tuple(Tuple))
+import Data.Generic (class Generic)
+import Data.Foreign.Class (class Encode, class Decode, encode, decode)
+import Data.Foreign.Generic (defaultOptions, genericDecodeJSON, genericEncodeJSON)
 
-embed :: HtmlElement -> Eff Effs Unit
-embed el = program (Just el)
-	{ init : init 
-	, update : updateWithStorage
-	, view : view
-	}
+embed :: HtmlElement -> Foreign -> Eff Effs Unit
+embed el flags = program (Just el)
+    { init : init (parseFlags flags)
+    , update : updateWithStorage
+    , view : view
+    }
 
 foreign import data LocalStorage :: Effect
 
@@ -76,13 +83,14 @@ type Model =
     }
 
 
-type Entry =
+newtype Entry = Entry
     { description :: String
     , completed :: Boolean
     , editing :: Boolean
     , id :: Int
     }
 
+derive instance genericEntry :: Generic Entry
 
 emptyModel :: Model
 emptyModel =
@@ -94,7 +102,7 @@ emptyModel =
 
 
 newEntry :: String -> Int -> Entry
-newEntry desc id =
+newEntry desc id = Entry
     { description : desc
     , completed : false
     , editing : false
@@ -102,9 +110,24 @@ newEntry desc id =
     }
 
 
-init :: Tuple Model (Cmds Effs Msg)
-init =
-    emptyModel ! []
+parseFlags :: Foreign -> Maybe Model 
+parseFlags v =
+    let
+        parsed = v
+            |> readNullOrUndefined
+            |> map (map unsafeFromForeign)
+            |> runExcept
+    in
+        case parsed of
+            Right m -> m
+            Left _ -> Nothing
+
+
+init :: Maybe Model -> Tuple Model (Cmds Effs Msg)
+init maybeModel = 
+    case maybeModel of
+        Nothing -> emptyModel ! []
+        Just model -> model ! []
 
 
 
@@ -138,15 +161,15 @@ update msg model =
 
         Add ->
             model
-	            { uid = model.uid + 1
-	            , field = ""
-	            , entries =
-	                if String.null model.field then
-	                    model.entries
-	                else
-	                	-- TODO: Set correct order here
-	                    (newEntry model.field model.uid) : model.entries
-	            }
+                { uid = model.uid + 1
+                , field = ""
+                , entries =
+                    if String.null model.field then
+                        model.entries
+                    else
+                        -- TODO: Set correct order here
+                        (newEntry model.field model.uid) : model.entries
+                }
                 ! []
 
         UpdateField str ->
@@ -154,7 +177,7 @@ update msg model =
 
         EditingEntry id isEditing ->
             let
-                updateEntry t =
+                updateEntry (Entry t) = Entry $
                     if t.id == id then
                         t { editing = isEditing }
                     else
@@ -168,7 +191,7 @@ update msg model =
 
         UpdateEntry id task ->
             let
-                updateEntry t =
+                updateEntry (Entry t) = Entry $
                     if t.id == id then
                         t { description = task }
                     else
@@ -178,16 +201,16 @@ update msg model =
                     ! []
 
         Delete id ->
-            model { entries = List.filter (\t -> t.id /= id) model.entries }
+            model { entries = List.filter (\t -> entryId t /= id) model.entries }
                 ! []
 
         DeleteComplete ->
-            model { entries = List.filter (not <<< (\v -> v.completed)) model.entries }
+            model { entries = List.filter (not <<< isCompleted) model.entries }
                 ! []
 
         Check id isCompleted ->
             let
-                updateEntry t =
+                updateEntry (Entry t) = Entry $
                     if t.id == id then
                         t { completed = isCompleted }
                     else
@@ -198,8 +221,8 @@ update msg model =
 
         CheckAll isCompleted ->
             let
-                updateEntry t =
-                    t { completed = isCompleted }
+                updateEntry (Entry t) =
+                    Entry $ t { completed = isCompleted }
             in
                 model { entries = map updateEntry model.entries }
                     ! []
@@ -209,6 +232,11 @@ update msg model =
 
 -- VIEW
 
+isCompleted :: Entry -> Boolean
+isCompleted (Entry todo) = todo.completed
+
+entryId :: Entry -> Int
+entryId (Entry todo) = todo.id
 
 view :: Model -> Html Msg
 view model =
@@ -258,11 +286,10 @@ onEnter msg =
 
 -- -- -- VIEW ALL ENTRIES
 
-
 viewEntries :: String -> List Entry -> Html Msg
 viewEntries visibility entries =
     let
-        isVisible todo =
+        isVisible (Entry todo) =
             case visibility of
                 "Completed" ->
                     todo.completed
@@ -274,7 +301,7 @@ viewEntries visibility entries =
                     true
 
         allCompleted =
-            Foldable.all (\v -> v.completed) entries
+            Foldable.all isCompleted entries
 
         cssVisibility =
             if List.null entries then
@@ -307,12 +334,12 @@ viewEntries visibility entries =
 
 
 viewKeyedEntry :: Entry -> Tuple String (Html Msg) 
-viewKeyedEntry todo =
-    ( show todo.id ! lazy viewEntry todo )
+viewKeyedEntry entry =
+    ( show (entryId entry) ! lazy viewEntry entry )
 
 
 viewEntry :: Entry -> Html Msg
-viewEntry todo =
+viewEntry (Entry todo) =
     li
         [ classList [ ( "completed" ! todo.completed ), ( "editing" ! todo.editing ) ] ]
         [ div
@@ -354,7 +381,7 @@ viewControls :: String -> List Entry -> Html Msg
 viewControls visibility entries =
     let
         entriesCompleted =
-            List.length (List.filter (\v -> v.completed) entries)
+            List.length (List.filter isCompleted entries)
 
         entriesLeft =
             List.length entries - entriesCompleted
