@@ -1,6 +1,6 @@
 exports.setStorage = function(state) {
     return function() {
-        localStorage.setItem("dominator-todo-save", JSON.stringify(state));
+        localStorage.setItem("dominator-todo-save", state);
     };
 };
 

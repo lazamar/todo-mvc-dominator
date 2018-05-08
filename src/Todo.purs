@@ -21,36 +21,33 @@ import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Except (runExcept)
 
-import Data.List (List)
 import Data.Array ((:), filter, length, null)
 import Data.Either (Either(Left, Right))
-import Data.Foldable (for_)
 import Data.Foldable as Foldable
-import Data.Foreign (Foreign, toForeign)
 import Data.Foreign.Class (class Encode, class Decode)
-import Data.Foreign.Generic (defaultOptions, genericDecode, genericEncode)
+import Data.Foreign.Generic (defaultOptions, genericDecode, genericDecodeJSON, genericEncode, genericEncodeJSON)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(Just, Nothing))
-import Data.Monoid ((<>), mempty)
+import Data.Monoid (mempty)
 import Data.String as String
 import Data.Tuple (Tuple(Tuple))
 
 import Dominator.Cmd (Cmds)
-import Dominator.Decode (Decoder, succeed, fail)
+import Dominator.Decode (succeed, fail)
 import Dominator.Html.Keyed as Keyed
 import Dominator.Html.Lazy (lazy, lazy2)
-import Dominator.Operators ((|>), (<|), (!))
+import Dominator.Operators ((|>), (!))
 
-embed :: HtmlElement -> Foreign -> Eff Effs Unit
+embed :: HtmlElement -> String -> Eff Effs Unit
 embed el flags = program (Just el)
-    { init : init (decodeModel flags)
+    { init : init (decodeFlags flags)
     , update : updateWithStorage
     , view : view
     }
 
 foreign import data LocalStorage :: Effect
 
-foreign import setStorage :: forall msg a. Foreign -> Eff (localStorage :: LocalStorage | a) msg
+foreign import setStorage :: forall msg a. String -> Eff (localStorage :: LocalStorage | a) msg
 
 foreign import focusElement :: forall msg a. String -> Eff (dom :: DOM | a) msg
 
@@ -66,7 +63,7 @@ updateWithStorage msg model =
             update msg model
     in
         newModel
-        ! cmds <> [ liftEff $ setStorage (encodeModel newModel) ]
+        ! cmds <> [ liftEff $ setStorage (encodeFlags newModel) ]
         
 
 
@@ -84,6 +81,12 @@ newtype Model = Model
 
 derive instance genericModel :: Generic Model _
 
+instance encodeModel :: Encode Model where
+    encode = genericEncode opts
+
+instance decodeModel :: Decode Model where
+    decode = genericDecode opts
+
 newtype Entry = Entry
     { description :: String
     , completed :: Boolean
@@ -99,7 +102,7 @@ instance encodeEntry :: Encode Entry where
 instance decodeEntry :: Decode Entry where
     decode = genericDecode opts
 
-    
+
 emptyModel :: Model
 emptyModel = Model
     { entries : mempty
@@ -117,17 +120,18 @@ newEntry desc id = Entry
     , id : id
     }
 
+-- Serialisation
 
 opts = defaultOptions { unwrapSingleConstructors = true }
 
-encodeModel :: Model -> Foreign
-encodeModel model = genericEncode opts model
+encodeFlags :: Model -> String
+encodeFlags model = genericEncodeJSON opts model
 
-decodeModel :: Foreign -> Maybe Model 
-decodeModel v = 
+decodeFlags :: String -> Maybe Model 
+decodeFlags v = 
     let
         parsed = v
-            |> genericDecode opts
+            |> genericDecodeJSON opts
             |> runExcept
     in
         case parsed of

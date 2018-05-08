@@ -12,7 +12,6 @@
 	<script src="./index.js"></script>
 	<script>
 		var storedState = localStorage.getItem('dominator-todo-save');
-		var startingState = storedState ? JSON.parse(storedState) : null;
 		
 		var container = document.querySelector(".todo")
 		PS.Todo.embed(container)(storedState)()
