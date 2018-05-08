@@ -1,21 +1,29 @@
 module Todo where
 
-{-| TodoMVC implemented in Dominator, using plain HTML and CSS for rendering.
+{-|  
+    This is an adaptation of Elm's TodoMVC <https://github.com/evancz/elm-todomvc>
+    which was originally written by Evan Czaplicki.
 
-This application is broken up into three key parts:
+    Dominator brings Elm's Html library to PureScript, allowing you to more
+    easily port code from Elm and use the Elm Architecture in PureScript 
 
-  1. Model  - a full definition of the application's state
-  2. Update - a way to step the application state forward
-  3. View   - a way to visualize our application state with HTML
+    TodoMVC implemented in Dominator, using plain HTML and CSS for rendering.
 
-This clean division of concerns is a core part of Dominator. You can read more about
-this in <http://guide.elm-lang.org/architecture/index.html>
+    This application is broken up into three key parts:
+
+    1. Model  - a full definition of the application's state
+    2. Update - a way to step the application state forward
+    3. View   - a way to visualize our application state with HTML
+
+    This clean division of concerns is a core part of Elm, and thus of Dominator too. 
+    You can read more about Elm's architecture at <http://guide.elm-lang.org/architecture/index.html>
 -}
 
-import Dominator.Html
-import Dominator.Html.Attributes
-import Dominator.Html.Events
 import Prelude hiding (div,id)
+
+import Dominator.Html (Attribute, DOM, Html, HtmlElement, a, button, div, footer, h1, header, input, label, li, p, program, section, span, strong, text, ul)
+import Dominator.Html.Attributes (autofocus, checked, classList, class_, for, hidden, href, id, name, placeholder, style, type_, value)
+import Dominator.Html.Events (keyCode, on, onBlur, onClick, onDoubleClick, onInput)
 
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
@@ -28,7 +36,6 @@ import Data.Foreign.Class (class Encode, class Decode)
 import Data.Foreign.Generic (defaultOptions, genericDecode, genericDecodeJSON, genericEncode, genericEncodeJSON)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(Just, Nothing))
-import Data.Monoid (mempty)
 import Data.String as String
 import Data.Tuple (Tuple(Tuple))
 
@@ -38,6 +45,18 @@ import Dominator.Html.Keyed as Keyed
 import Dominator.Html.Lazy (lazy, lazy2)
 import Dominator.Operators ((|>), (!))
 
+{-|
+    In this application we are not defining a `main` function. We are instead 
+    defining this `embed` function which can be called form our page's JS and
+    will kickstart our application.
+
+    It will accept a reference to an HTML element and a string.
+    The app will be created inside the HTML element. If you passed `Nothing` 
+    as the first argument to `program` the app would use the document's `body`.
+
+    We will use the string to help creating our initial model.
+
+|-}
 embed :: HtmlElement -> String -> Eff Effs Unit
 embed el flags = program (Just el)
     { init : init (decodeFlags flags)
@@ -45,6 +64,10 @@ embed el flags = program (Just el)
     , view : view
     }
 
+
+{-| 
+    Elm has ports. Purescript has FFI. And that's what we will use.
+|-}
 foreign import data LocalStorage :: Effect
 
 foreign import setStorage :: forall msg a. String -> Eff (localStorage :: LocalStorage | a) msg
@@ -53,8 +76,9 @@ foreign import focusElement :: forall msg a. String -> Eff (dom :: DOM | a) msg
 
 type Effs = (dom :: DOM, localStorage :: LocalStorage)
 
-{-| We want to `setStorage` on every update. This function adds the setStorage
-command for every step of the update function.
+{-| 
+    We want to `setStorage` on every update. This function adds the setStorage
+    command for every step of the update function.
 -}
 updateWithStorage :: Msg -> Model -> Tuple Model (Cmds Effs Msg)
 updateWithStorage msg model =
@@ -105,7 +129,7 @@ instance decodeEntry :: Decode Entry where
 
 emptyModel :: Model
 emptyModel = Model
-    { entries : mempty
+    { entries : []
     , visibility : "All"
     , field : ""
     , uid : 0
@@ -120,7 +144,10 @@ newEntry desc id = Entry
     , id : id
     }
 
--- Serialisation
+{-|
+    We use Generics to handle the serialisation and parsing 
+    of our main types.
+|-}
 
 opts = defaultOptions { unwrapSingleConstructors = true }
 
@@ -150,9 +177,10 @@ init maybeModel =
 -- UPDATE
 
 
-{-| Users of our app can trigger messages by clicking and typing. These
-messages are fed into the `update` function as they occur, letting us react
-to them.
+{-| 
+    Users of our app can trigger messages by clicking and typing. These
+    messages are fed into the `update` function as they occur, letting us react
+    to them.
 -}
 data Msg
     = NoOp
@@ -168,7 +196,7 @@ data Msg
 
 
 
--- How we update our Model on a given Msg?
+-- How we update our Model on a given Msg
 update :: Msg -> Model -> Tuple Model (Cmds Effs Msg)
 update msg (Model model) = 
     case msg of
