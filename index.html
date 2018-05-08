@@ -6,14 +6,14 @@
 	<link rel="stylesheet" href="./style.css">
 </head>
 <body>
-
+	
 	<div class="todo"></div>
 
 	<script src="./index.js"></script>
 	<script>
 		var storedState = localStorage.getItem('dominator-todo-save');
-		
 		var container = document.querySelector(".todo")
+
 		PS.Todo.embed(container)(storedState)()
 	</script>
 
